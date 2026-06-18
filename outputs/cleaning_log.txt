@@ -1,0 +1,57 @@
+Data Cleaning & Validation Log - Part 1
+
+1. Executive Summary & Record Health
+This log details the systematic data cleaning, structural alignment, and business rule validation performed on the raw orders dataset. 
+- Total Rows Evaluated:** 912
+- Total Clean Records:** 761 (Passed all chronological, structural, and business rule filters)
+- Total Warning Records:** 45 (Missing regional or shipping fields; retained via fallback values)
+- Total Invalid Records:** 106 (Contained critical chronological date errors or out-of-bounds discounts)
+- Exact Duplicate Rows Removed:** 20 identical rows were removed using Excel Data Tools to prevent financial double-counting.
+- Conflicting Duplicate Order IDs Flagged:** 12 records with matching Order IDs but conflicting data values were isolated and flagged for manual review.
+
+2. Comprehensive List of Issues Found & Actions Performed
+
+ Text Fields Standardization
+- Issues Found:
+Widespread inconsistent casing (e.g., uppercase vs. sentence case mismatches), trailing white spaces, and irregular formatting across structural fields (`customer_name`, `segment`, `region`, `state`, `city`, `category`, `sub_category`, `ship_mode`, `payment_status`, `order_status`).
+- Cleaning Action:
+Applied the `=PROPER(TRIM(cell))` formula across all 10 columns using a temporary workspace. Outputs were locked permanently into place using the Paste Values (123) tool to keep data integrity stable.
+
+Missing Structural Value Management
+- Issues Found:
+24 instances of missing `region` values, 20 instances of missing `ship_mode` values, and 1 record missing both fields simultaneously.
+- Cleaning Action:
+Following corporate guidelines, missing structural cells were imputed with the string `"Unknown"` to ensure the rows remained queryable. These rows were successfully flagged under the `Warning` criteria in the final quality audit.
+
+Date Logic & Sequence Validation
+- Issues Found:
+Dates were imported as mixed text strings in different formatting behaviors (`DD-MM-YYYY`, `MM/DD/YYYY`, `DD mmm YYYY`), breaking chronological sorting capabilities. Additionally, serious chronological sequence breaks were discovered.
+- Cleaning Action:
+Forced all rows into real chronological dates using Excel's "Text to Columns" configuration. 
+- Sequence Errors Identified:** Exactly **86 records** exhibited a critical sequencing failure where the system logged a `ship_date` occurring 'prior' to the initial `order_date` (resulting in a negative shipping delay calculation).
+- Business Treatment:
+The raw history was preserved, but all 86 anomalies were flagged as `Invalid` inside the data quality tracking index column.
+
+Discount and Pricing Calculations
+- Issues Found:
+20 records contained highly illogical or out-of-range discount metrics (such as negative entries or promotional reductions degrading past 60%).
+- Cleaning Action:
+Isolated the affected cells, treating non-valid entries as `0` where core sales fields remained structurally complete, while tagging the overall rows as `Invalid` for financial risk scoping.
+
+ 3. Business Rules Applied
+- Rule 1 (Data Preservation):
+The original source export `raw_orders.xlsx` was left 100% untouched. All operations were written inside `cleaned_orders.xlsx`.
+- Rule 2 (Unknown Imputations):
+Empty regions and missing ship modes were forced to `"Unknown"` rather than deleting rows.
+- Rule 3 (Financial Summaries Filter):
+All transactional entries showing an order_status of `Cancelled` or `Returned`, or a payment_status of `Failed` were isolated via Pivot filters to ensure completed executive dashboards reflect strictly realized cash flows.
+
+4. Financial Reconciliation & Audited Mismatches
+- Raw Export Sales Metric (Corrupted Legacy Column): ₹9,079,590.47
+- True Audited Sales Metric (Calculated Formulas): ₹9,008,422.84
+- Total Mismatch Corrected:** ₹71,167.63 (Discrepancy successfully resolved by overriding broken legacy cells with your calculated math columns: `Quantity * Unit Price * (1 - Discount)`).
+
+5. Process Assumptions and Limitations
+- Assumptions:
+Transactions missing regions or shipping choices are assumed to be valid operational actions rather than data corruption dropouts, and are retained as `"Unknown"`. Blank discounts are assumed to indicate no active marketing discount was authorized.
+- Known Limitations:** Because this data cleaning was performed on a static, flat-file export taken out of internal relational databases, it is impossible to programmatically patch the root-cause behind why 86 orders shipped backwards in time without gaining direct access to the live system engineering event logs.
